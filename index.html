@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suivi de Chantiers</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1 { text-align: center; }
@@ -13,8 +14,9 @@
     .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
     .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
-    .delete-btn, .edit-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
+    .delete-btn, .edit-btn, .pdf-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     .delete-btn { background: #e74c3c; margin-left: 10px; }
+    .pdf-btn { background: #2ecc71; margin-left: 10px; }
   </style>
 </head>
 <body>
@@ -55,6 +57,30 @@
       return JSON.parse(localStorage.getItem('chantiers') || '[]');
     }
 
+    function exportPDF(index) {
+      const chantiers = chargerChantiers();
+      const c = chantiers[index];
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text("Fiche Chantier", 10, 20);
+      doc.setFontSize(12);
+      doc.text(`Chantier : ${c.chantier}`, 10, 30);
+      doc.text(`Date visite : ${c.dateVisite || '-'}`, 10, 40);
+      doc.text(`Durée estimée : ${c.dureeEstimee || '-'} jours`, 10, 50);
+      doc.text(`Date début : ${c.dateDebut || '-'}`, 10, 60);
+      doc.text(`Date fin : ${c.dateFin || '-'}`, 10, 70);
+      doc.text(`Visite réalisée : ${c.visite ? 'Oui' : 'Non'}`, 10, 80);
+      doc.text(`Transmise BE : ${c.transmise ? 'Oui' : 'Non'}`, 10, 90);
+      doc.text(`Retour client : ${c.retour ? 'Oui' : 'Non'}`, 10, 100);
+      doc.text(`Chef d'équipe : ${c.chef || '-'}`, 10, 110);
+      doc.text(`Commentaire :`, 10, 120);
+      doc.text(c.commentaire || '-', 10, 130, { maxWidth: 180 });
+
+      doc.save(`chantier_${c.chantier}.pdf`);
+    }
+
     function afficherChantiers() {
       const chantiers = chargerChantiers();
       liste.innerHTML = '';
@@ -69,6 +95,7 @@
           Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
           <button class="edit-btn" onclick="modifierChantier(${index})">Modifier</button>
           <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
+          <button class="pdf-btn" onclick="exportPDF(${index})">Exporter en PDF</button>
         `;
         liste.appendChild(div);
       });
