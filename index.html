@@ -2,23 +2,70 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Suivi de Chantiers - avec photos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Suivi de Chantiers</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1 { text-align: center; }
-    form, .chantier-list { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto; }
+    form, .chantier-list {
+      background: #fff; padding: 20px; border-radius: 10px;
+      box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto;
+    }
     label { display: block; margin-top: 10px; }
-    input, textarea, button { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
-    .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
+    input, textarea, button {
+      width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .chantier {
+      border: 1px solid #ddd; padding: 10px; margin-top: 10px;
+      border-radius: 5px; background: #f1f1f1;
+    }
     .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
-    .delete-btn, .edit-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
+    .delete-btn, .edit-btn, .export-pdf-btn {
+      border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer;
+      color: white;
+    }
     .delete-btn { background: #e74c3c; margin-left: 10px; }
-    .photo-preview { max-width: 100px; max-height: 100px; margin: 5px; border: 1px solid #ccc; border-radius: 5px; }
-    .photo-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-    .photo-item { position: relative; }
-    .photo-item button { position: absolute; top: 0; right: 0; background: red; color: white; border: none; border-radius: 50%; cursor: pointer; width: 20px; height: 20px; line-height: 20px; padding: 0; }
+    .edit-btn { background: #3498db; }
+    .export-pdf-btn { background: #2ecc71; margin-left: 10px; }
+    #photosTemp {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+    }
+    .photo-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90px;
+      font-size: 12px;
+      color: #333;
+    }
+    .photo-preview {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .photo-item button {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #e74c3c;
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      line-height: 18px;
+    }
   </style>
+
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <h1>Suivi de Chantiers</h1>
@@ -36,13 +83,14 @@
     </div>
     <label>Chef d'équipe <input type="text" id="chef"></label>
     <label>Commentaire <textarea id="commentaire"></textarea></label>
-    
-    <label>Ajouter une photo (avec nom) :</label>
-    <input type="text" id="nomPhoto" placeholder="Nom de la photo" style="width: 49%; display: inline-block;">
-    <input type="file" id="photoInput" accept="image/*" style="width: 49%; display: inline-block;">
-    <button type="button" id="ajouterPhotoBtn" style="width: 100%; margin-top: 10px;">Ajouter la photo</button>
 
-    <div class="photo-container" id="photosTemp"></div>
+    <hr>
+    <h3>Ajouter des photos</h3>
+    <label>Nom de la photo <input type="text" id="nomPhoto"></label>
+    <label>Choisir la photo <input type="file" id="photoInput" accept="image/*"></label>
+    <button type="button" id="ajouterPhotoBtn" style="width:auto; margin-top:10px;">Ajouter la photo</button>
+
+    <div id="photosTemp"></div>
 
     <input type="hidden" id="indexEdit" value="">
     <button type="submit" style="margin-top:20px;">Valider</button>
@@ -58,27 +106,26 @@
   const liste = document.getElementById('liste');
   const indexEdit = document.getElementById('indexEdit');
 
-  // Photos temporaires avant validation chantier
   let photosTemp = [];
 
-  // Ajouter photo dans photosTemp avec nom + image en base64
   document.getElementById('ajouterPhotoBtn').addEventListener('click', () => {
     const nomPhoto = document.getElementById('nomPhoto').value.trim();
     const photoInput = document.getElementById('photoInput');
     const file = photoInput.files[0];
-    if(!nomPhoto) {
+
+    if (!nomPhoto) {
       alert('Merci de saisir un nom pour la photo.');
       return;
     }
-    if(!file) {
+    if (!file) {
       alert('Merci de sélectionner une photo.');
       return;
     }
+
     const reader = new FileReader();
-    reader.onload = function(e) {
-      photosTemp.push({nom: nomPhoto, data: e.target.result});
+    reader.onload = function (e) {
+      photosTemp.push({ nom: nomPhoto, data: e.target.result });
       afficherPhotosTemp();
-      // reset inputs
       document.getElementById('nomPhoto').value = '';
       photoInput.value = '';
     };
@@ -94,18 +141,17 @@
       div.innerHTML = `
         <img src="${p.data}" alt="${p.nom}" class="photo-preview" title="${p.nom}">
         <button title="Supprimer photo" onclick="supprimerPhotoTemp(${i})">&times;</button>
-        <div style="text-align:center;">${p.nom}</div>
+        <div>${p.nom}</div>
       `;
       container.appendChild(div);
     });
   }
 
   function supprimerPhotoTemp(index) {
-    photosTemp.splice(index,1);
+    photosTemp.splice(index, 1);
     afficherPhotosTemp();
   }
 
-  // Stockage et récupération chantiers dans localStorage
   function enregistrerChantiers(chantiers) {
     localStorage.setItem('chantiers', JSON.stringify(chantiers));
   }
@@ -114,22 +160,22 @@
     return JSON.parse(localStorage.getItem('chantiers') || '[]');
   }
 
-  // Affichage liste chantier + photos
   function afficherChantiers() {
     const chantiers = chargerChantiers();
     liste.innerHTML = '';
     chantiers.forEach((c, index) => {
       const div = document.createElement('div');
       div.className = 'chantier';
-      // Construction photos affichage
+
       let photosHTML = '';
-      if(c.photos && c.photos.length > 0) {
+      if (c.photos && c.photos.length > 0) {
         photosHTML = '<div style="margin-top:10px;">Photos :<br><div style="display:flex; flex-wrap: wrap; gap:10px;">';
         c.photos.forEach(p => {
           photosHTML += `<div><img src="${p.data}" alt="${p.nom}" style="max-width:80px; max-height:80px; border:1px solid #ccc; border-radius:5px;"><br><small>${p.nom}</small></div>`;
         });
         photosHTML += '</div></div>';
       }
+
       div.innerHTML = `
         <strong>${c.chantier}</strong><br>
         Visite : ${c.dateVisite || '-'} | Début : ${c.dateDebut || '-'} | Fin : ${c.dateFin || '-'} | Durée : ${c.dureeEstimee || '-'} jours<br>
@@ -137,16 +183,18 @@
         Commentaire : ${c.commentaire || '-'}<br>
         Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
         ${photosHTML}
-        <button class="edit-btn" onclick="modifierChantier(${index})">Modifier</button>
-        <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
+        <div style="margin-top: 10px;">
+          <button class="edit-btn" onclick="modifierChantier(${index})">Modifier</button>
+          <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
+          <button class="export-pdf-btn" onclick="exporterPDF(${index})">Exporter PDF</button>
+        </div>
       `;
       liste.appendChild(div);
     });
   }
 
-  // Supprimer chantier
   function supprimerChantier(index) {
-    if(confirm('Supprimer ce chantier ?')) {
+    if (confirm('Supprimer ce chantier ?')) {
       const chantiers = chargerChantiers();
       chantiers.splice(index, 1);
       enregistrerChantiers(chantiers);
@@ -154,53 +202,58 @@
     }
   }
 
-  // Modifier chantier : pré-remplir formulaire + photosTemp
   function modifierChantier(index) {
     const chantiers = chargerChantiers();
     const c = chantiers[index];
     document.getElementById('chantier').value = c.chantier;
-    document.getElementById('dateVisite').value = c.dateVisite;
-    document.getElementById('dureeEstimee').value = c.dureeEstimee;
-    document.getElementById('dateDebut').value = c.dateDebut;
-    document.getElementById('dateFin').value = c.dateFin;
-    document.getElementById('visite').checked = c.visite;
-    document.getElementById('transmise').checked = c.transmise;
-    document.getElementById('retour').checked = c.retour;
-    document.getElementById('chef').value = c.chef;
-    document.getElementById('commentaire').value = c.commentaire;
+    document.getElementById('dateVisite').value = c.dateVisite || '';
+    document.getElementById('dureeEstimee').value = c.dureeEstimee || '';
+    document.getElementById('dateDebut').value = c.dateDebut || '';
+    document.getElementById('dateFin').value = c.dateFin || '';
+    document.getElementById('chef').value = c.chef || '';
+    document.getElementById('commentaire').value = c.commentaire || '';
+    document.getElementById('visite').checked = c.visite || false;
+    document.getElementById('transmise').checked = c.transmise || false;
+    document.getElementById('retour').checked = c.retour || false;
+    indexEdit.value = index;
 
     photosTemp = c.photos ? [...c.photos] : [];
     afficherPhotosTemp();
 
-    indexEdit.value = index;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Soumission formulaire : ajout ou modification chantier
   form.addEventListener('submit', e => {
     e.preventDefault();
 
-    // Création objet chantier avec photos
-    const chantier = {
-      chantier: document.getElementById('chantier').value,
+    const chantier = document.getElementById('chantier').value.trim();
+    if (!chantier) {
+      alert('Le nom du chantier est obligatoire');
+      return;
+    }
+
+    const chantiers = chargerChantiers();
+
+    const nouveauChantier = {
+      chantier,
       dateVisite: document.getElementById('dateVisite').value,
       dureeEstimee: document.getElementById('dureeEstimee').value,
       dateDebut: document.getElementById('dateDebut').value,
       dateFin: document.getElementById('dateFin').value,
+      chef: document.getElementById('chef').value.trim(),
+      commentaire: document.getElementById('commentaire').value.trim(),
       visite: document.getElementById('visite').checked,
       transmise: document.getElementById('transmise').checked,
       retour: document.getElementById('retour').checked,
-      chef: document.getElementById('chef').value,
-      commentaire: document.getElementById('commentaire').value,
-      photos: photosTemp
+      photos: photosTemp.length > 0 ? [...photosTemp] : [],
     };
 
-    const chantiers = chargerChantiers();
-    const index = indexEdit.value;
-
-    if(index !== '') {
-      chantiers[index] = chantier;
+    if (indexEdit.value === '') {
+      // Ajout
+      chantiers.push(nouveauChantier);
     } else {
-      chantiers.push(chantier);
+      // Modification
+      chantiers[parseInt(indexEdit.value)] = nouveauChantier;
     }
 
     enregistrerChantiers(chantiers);
@@ -212,13 +265,59 @@
     indexEdit.value = '';
   });
 
-  // Initialisation affichage
+  // Initialisation
   afficherChantiers();
 
-  // Fonctions globales pour boutons dans HTML
-  window.modifierChantier = modifierChantier;
-  window.supprimerChantier = supprimerChantier;
-  window.supprimerPhotoTemp = supprimerPhotoTemp;
+  // Export PDF avec jsPDF
+  async function exporterPDF(index) {
+    const { jsPDF } = window.jspdf;
+    const chantiers = chargerChantiers();
+    const c = chantiers[index];
+
+    const pdf = new jsPDF();
+
+    pdf.setFontSize(16);
+    pdf.text(`Chantier: ${c.chantier}`, 10, 20);
+
+    pdf.setFontSize(12);
+    pdf.text(`Date de visite technique: ${c.dateVisite || '-'}`, 10, 30);
+    pdf.text(`Durée estimée: ${c.dureeEstimee || '-'} jours`, 10, 37);
+    pdf.text(`Date de début: ${c.dateDebut || '-'}`, 10, 44);
+    pdf.text(`Date de fin: ${c.dateFin || '-'}`, 10, 51);
+    pdf.text(`Chef d'équipe: ${c.chef || '-'}`, 10, 58);
+
+    pdf.text(`Visite réalisée: ${c.visite ? 'Oui' : 'Non'}`, 10, 65);
+    pdf.text(`Transmise BE: ${c.transmise ? 'Oui' : 'Non'}`, 10, 72);
+    pdf.text(`Retour client: ${c.retour ? 'Oui' : 'Non'}`, 10, 79);
+
+    pdf.text('Commentaire:', 10, 88);
+    pdf.setFontSize(11);
+    const splitComment = pdf.splitTextToSize(c.commentaire || '-', 180);
+    pdf.text(splitComment, 10, 95);
+
+    // Photos
+    if (c.photos && c.photos.length > 0) {
+      let yPos = 95 + splitComment.length * 7 + 10;
+      pdf.setFontSize(12);
+      pdf.text('Photos:', 10, yPos);
+      yPos += 6;
+      for (const p of c.photos) {
+        try {
+          pdf.addImage(p.data, 'JPEG', 10, yPos, 50, 50);
+          pdf.text(p.nom, 65, yPos + 25);
+          yPos += 60;
+          if (yPos > 270) {
+            pdf.addPage();
+            yPos = 20;
+          }
+        } catch (err) {
+          console.error('Erreur ajout image au PDF:', err);
+        }
+      }
+    }
+
+    pdf.save(`${c.chantier.replace(/\s+/g, '_')}_chantier.pdf`);
+  }
 </script>
 </body>
 </html>
