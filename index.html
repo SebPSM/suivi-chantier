@@ -16,6 +16,7 @@
     .delete-btn, .edit-btn, .ouvrir-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     .delete-btn { background: #e74c3c; margin-left: 10px; }
     .export-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+    .supprimer-dossier-btn { background: #c0392b; color: white; border: none; margin-left: 10px; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -108,13 +109,27 @@
     function afficherListeDossiers() {
       listeDossiersDiv.innerHTML = '<h2>Dossiers existants</h2>';
       dossiers.forEach(nom => {
+        const container = document.createElement('div');
         const btn = document.createElement('button');
         btn.className = 'ouvrir-btn';
         btn.textContent = `📁 ${nom}`;
         btn.onclick = () => {
           window.location.href = `${window.location.pathname}?dossier=${encodeURIComponent(nom)}`;
         };
-        listeDossiersDiv.appendChild(btn);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'supprimer-dossier-btn';
+        deleteBtn.textContent = '🗑️ Supprimer';
+        deleteBtn.onclick = () => {
+          if (confirm(`Supprimer définitivement le dossier "${nom}" ?`)) {
+            dossiers = dossiers.filter(d => d !== nom);
+            localStorage.removeItem('chantiers_' + nom);
+            enregistrerDossiers();
+            afficherListeDossiers();
+          }
+        };
+        container.appendChild(btn);
+        container.appendChild(deleteBtn);
+        listeDossiersDiv.appendChild(container);
       });
     }
 
@@ -199,9 +214,13 @@
 
     // Lecture de l'URL pour dossier sélectionné
     const params = new URLSearchParams(window.location.search);
-    const dossierURL = params.get('dossier');
-    if (dossierURL && dossiers.includes(dossierURL)) {
+    const dossierURL = decodeURIComponent(params.get('dossier') || '');
+    if (dossierURL) {
       currentDossier = dossierURL;
+      if (!dossiers.includes(currentDossier)) {
+        dossiers.push(currentDossier);
+        enregistrerDossiers();
+      }
       currentDossierTitle.textContent = `Dossier : ${currentDossier}`;
       chantierForm.style.display = 'block';
       chantierListDiv.style.display = 'block';
