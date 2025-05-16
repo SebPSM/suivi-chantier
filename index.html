@@ -2,26 +2,22 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Suivi de Chantiers</title>
+  <title>Suivi de Chantiers - avec photos</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1 { text-align: center; }
     form, .chantier-list { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto; }
     label { display: block; margin-top: 10px; }
-    input, textarea, button, select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;}
+    input, textarea, button { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
     .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
     .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
     .delete-btn, .edit-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     .delete-btn { background: #e74c3c; margin-left: 10px; }
-    .photo-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
-    .photo-item { border: 1px solid #ccc; padding: 5px; border-radius: 5px; background: white; width: 120px; text-align: center; }
-    .photo-item img { max-width: 100%; height: auto; border-radius: 3px; }
-    .photo-item-name { margin-top: 5px; font-size: 0.85em; word-break: break-word; }
-    .photo-remove-btn { margin-top: 5px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer; padding: 2px 5px; font-size: 0.8em; }
-    .photo-upload-section { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .photo-upload-section > * { flex: 1; min-width: 150px; }
+    .photo-preview { max-width: 100px; max-height: 100px; margin: 5px; border: 1px solid #ccc; border-radius: 5px; }
+    .photo-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .photo-item { position: relative; }
+    .photo-item button { position: absolute; top: 0; right: 0; background: red; color: white; border: none; border-radius: 50%; cursor: pointer; width: 20px; height: 20px; line-height: 20px; padding: 0; }
   </style>
 </head>
 <body>
@@ -40,19 +36,16 @@
     </div>
     <label>Chef d'équipe <input type="text" id="chef"></label>
     <label>Commentaire <textarea id="commentaire"></textarea></label>
+    
+    <label>Ajouter une photo (avec nom) :</label>
+    <input type="text" id="nomPhoto" placeholder="Nom de la photo" style="width: 49%; display: inline-block;">
+    <input type="file" id="photoInput" accept="image/*" style="width: 49%; display: inline-block;">
+    <button type="button" id="ajouterPhotoBtn" style="width: 100%; margin-top: 10px;">Ajouter la photo</button>
 
-    <!-- Section ajout photos -->
-    <div class="photo-upload-section">
-      <input type="file" id="photoInput" accept="image/*" capture="environment" />
-      <input type="text" id="photoName" placeholder="Nom de la photo" />
-      <button type="button" id="addPhotoBtn">Ajouter la photo</button>
-    </div>
-
-    <!-- Liste des photos temporairement ajoutées -->
-    <div class="photo-list" id="photoPreviewList"></div>
+    <div class="photo-container" id="photosTemp"></div>
 
     <input type="hidden" id="indexEdit" value="">
-    <button type="submit">Valider</button>
+    <button type="submit" style="margin-top:20px;">Valider</button>
   </form>
 
   <div class="chantier-list" id="chantierList">
@@ -64,13 +57,55 @@
   const form = document.getElementById('chantierForm');
   const liste = document.getElementById('liste');
   const indexEdit = document.getElementById('indexEdit');
-  const photoInput = document.getElementById('photoInput');
-  const photoNameInput = document.getElementById('photoName');
-  const addPhotoBtn = document.getElementById('addPhotoBtn');
-  const photoPreviewList = document.getElementById('photoPreviewList');
 
+  // Photos temporaires avant validation chantier
   let photosTemp = [];
 
+  // Ajouter photo dans photosTemp avec nom + image en base64
+  document.getElementById('ajouterPhotoBtn').addEventListener('click', () => {
+    const nomPhoto = document.getElementById('nomPhoto').value.trim();
+    const photoInput = document.getElementById('photoInput');
+    const file = photoInput.files[0];
+    if(!nomPhoto) {
+      alert('Merci de saisir un nom pour la photo.');
+      return;
+    }
+    if(!file) {
+      alert('Merci de sélectionner une photo.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      photosTemp.push({nom: nomPhoto, data: e.target.result});
+      afficherPhotosTemp();
+      // reset inputs
+      document.getElementById('nomPhoto').value = '';
+      photoInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function afficherPhotosTemp() {
+    const container = document.getElementById('photosTemp');
+    container.innerHTML = '';
+    photosTemp.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'photo-item';
+      div.innerHTML = `
+        <img src="${p.data}" alt="${p.nom}" class="photo-preview" title="${p.nom}">
+        <button title="Supprimer photo" onclick="supprimerPhotoTemp(${i})">&times;</button>
+        <div style="text-align:center;">${p.nom}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function supprimerPhotoTemp(index) {
+    photosTemp.splice(index,1);
+    afficherPhotosTemp();
+  }
+
+  // Stockage et récupération chantiers dans localStorage
   function enregistrerChantiers(chantiers) {
     localStorage.setItem('chantiers', JSON.stringify(chantiers));
   }
@@ -79,33 +114,29 @@
     return JSON.parse(localStorage.getItem('chantiers') || '[]');
   }
 
+  // Affichage liste chantier + photos
   function afficherChantiers() {
     const chantiers = chargerChantiers();
     liste.innerHTML = '';
     chantiers.forEach((c, index) => {
       const div = document.createElement('div');
       div.className = 'chantier';
-
-      let photosHtml = '';
+      // Construction photos affichage
+      let photosHTML = '';
       if(c.photos && c.photos.length > 0) {
-        photosHtml = '<div class="photo-list">';
-        c.photos.forEach((p) => {
-          photosHtml += `
-            <div class="photo-item" title="${p.name}">
-              <img src="${p.data}" alt="${p.name}" />
-              <div class="photo-item-name">${p.name}</div>
-            </div>`;
+        photosHTML = '<div style="margin-top:10px;">Photos :<br><div style="display:flex; flex-wrap: wrap; gap:10px;">';
+        c.photos.forEach(p => {
+          photosHTML += `<div><img src="${p.data}" alt="${p.nom}" style="max-width:80px; max-height:80px; border:1px solid #ccc; border-radius:5px;"><br><small>${p.nom}</small></div>`;
         });
-        photosHtml += '</div>';
+        photosHTML += '</div></div>';
       }
-
       div.innerHTML = `
         <strong>${c.chantier}</strong><br>
         Visite : ${c.dateVisite || '-'} | Début : ${c.dateDebut || '-'} | Fin : ${c.dateFin || '-'} | Durée : ${c.dureeEstimee || '-'} jours<br>
         Chef : ${c.chef || '-'}<br>
         Commentaire : ${c.commentaire || '-'}<br>
         Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
-        ${photosHtml}
+        ${photosHTML}
         <button class="edit-btn" onclick="modifierChantier(${index})">Modifier</button>
         <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
       `;
@@ -113,13 +144,17 @@
     });
   }
 
+  // Supprimer chantier
   function supprimerChantier(index) {
-    const chantiers = chargerChantiers();
-    chantiers.splice(index, 1);
-    enregistrerChantiers(chantiers);
-    afficherChantiers();
+    if(confirm('Supprimer ce chantier ?')) {
+      const chantiers = chargerChantiers();
+      chantiers.splice(index, 1);
+      enregistrerChantiers(chantiers);
+      afficherChantiers();
+    }
   }
 
+  // Modifier chantier : pré-remplir formulaire + photosTemp
   function modifierChantier(index) {
     const chantiers = chargerChantiers();
     const c = chantiers[index];
@@ -140,49 +175,11 @@
     indexEdit.value = index;
   }
 
-  function afficherPhotosTemp() {
-    photoPreviewList.innerHTML = '';
-    photosTemp.forEach((p, i) => {
-      const div = document.createElement('div');
-      div.className = 'photo-item';
-      div.title = p.name;
-      div.innerHTML = `
-        <img src="${p.data}" alt="${p.name}" />
-        <div class="photo-item-name">${p.name}</div>
-        <button class="photo-remove-btn" onclick="supprimerPhotoTemp(${i})">X</button>
-      `;
-      photoPreviewList.appendChild(div);
-    });
-  }
-
-  function supprimerPhotoTemp(i) {
-    photosTemp.splice(i, 1);
-    afficherPhotosTemp();
-  }
-
-  addPhotoBtn.addEventListener('click', () => {
-    const file = photoInput.files[0];
-    const name = photoNameInput.value.trim();
-    if (!file) {
-      alert('Veuillez choisir une photo.');
-      return;
-    }
-    if (!name) {
-      alert('Veuillez donner un nom à la photo.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      photosTemp.push({ name, data: e.target.result });
-      afficherPhotosTemp();
-      photoInput.value = '';
-      photoNameInput.value = '';
-    };
-    reader.readAsDataURL(file);
-  });
-
+  // Soumission formulaire : ajout ou modification chantier
   form.addEventListener('submit', e => {
     e.preventDefault();
+
+    // Création objet chantier avec photos
     const chantier = {
       chantier: document.getElementById('chantier').value,
       dateVisite: document.getElementById('dateVisite').value,
@@ -199,15 +196,16 @@
 
     const chantiers = chargerChantiers();
     const index = indexEdit.value;
-    if (index !== '') {
+
+    if(index !== '') {
       chantiers[index] = chantier;
     } else {
       chantiers.push(chantier);
     }
+
     enregistrerChantiers(chantiers);
     afficherChantiers();
 
-    // Reset formulaire et photos
     form.reset();
     photosTemp = [];
     afficherPhotosTemp();
@@ -217,11 +215,10 @@
   // Initialisation affichage
   afficherChantiers();
 
-  // Rendre les fonctions accessibles globalement (pour onclick dans HTML)
+  // Fonctions globales pour boutons dans HTML
   window.modifierChantier = modifierChantier;
   window.supprimerChantier = supprimerChantier;
   window.supprimerPhotoTemp = supprimerPhotoTemp;
-
 </script>
 </body>
 </html>
