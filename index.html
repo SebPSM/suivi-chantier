@@ -3,321 +3,276 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Suivi de Chantiers</title>
+  <title>Suivi de Chantiers avec Dossiers</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
-    h1 { text-align: center; }
-    form, .chantier-list {
-      background: #fff; padding: 20px; border-radius: 10px;
-      box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; display: flex; gap: 20px; }
+    #sidebar { width: 220px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; height: fit-content; }
+    #main { flex: 1; }
+    h1, h2 { text-align: center; }
+    form, .chantier-list { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; margin-top: 20px; }
     label { display: block; margin-top: 10px; }
-    input, textarea, button {
-      width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    .chantier {
-      border: 1px solid #ddd; padding: 10px; margin-top: 10px;
-      border-radius: 5px; background: #f1f1f1;
-    }
+    input, textarea, select, button { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
     .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
-    .delete-btn, .edit-btn, .export-pdf-btn {
-      border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer;
-      color: white;
-    }
-    .delete-btn { background: #e74c3c; margin-left: 10px; }
-    .edit-btn { background: #3498db; }
-    .export-pdf-btn { background: #2ecc71; margin-left: 10px; }
-    #photosTemp {
-      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
-    }
-    .photo-item {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 90px;
-      font-size: 12px;
-      color: #333;
-    }
-    .photo-preview {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    .photo-item button {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: #e74c3c;
-      border: none;
-      color: white;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      font-weight: bold;
-      line-height: 18px;
-    }
+    button { cursor: pointer; }
+    .folder-item { padding: 8px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
+    .folder-item.active { background: #3498db; color: white; }
+    .btn-small { width: auto; padding: 5px 10px; font-size: 0.9em; }
+    .actions { margin-top: 10px; display: flex; gap: 5px; flex-wrap: wrap; }
   </style>
-
-  <!-- jsPDF CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <h1>Suivi de Chantiers</h1>
 
-  <form id="chantierForm">
-    <label>Chantier <input type="text" id="chantier" required></label>
-    <label>Date de visite technique <input type="date" id="dateVisite"></label>
-    <label>Durée estimée (jours) <input type="number" id="dureeEstimee"></label>
-    <label>Date de début <input type="date" id="dateDebut"></label>
-    <label>Date de fin <input type="date" id="dateFin"></label>
-    <div class="checkbox-group">
-      <label><input type="checkbox" id="visite"> Visite réalisée</label>
-      <label><input type="checkbox" id="transmise"> Transmise au BE</label>
-      <label><input type="checkbox" id="retour"> Retour client</label>
-    </div>
-    <label>Chef d'équipe <input type="text" id="chef"></label>
-    <label>Commentaire <textarea id="commentaire"></textarea></label>
-
-    <hr>
-    <h3>Ajouter des photos</h3>
-    <label>Nom de la photo <input type="text" id="nomPhoto"></label>
-    <label>Choisir la photo <input type="file" id="photoInput" accept="image/*"></label>
-    <button type="button" id="ajouterPhotoBtn" style="width:auto; margin-top:10px;">Ajouter la photo</button>
-
-    <div id="photosTemp"></div>
-
-    <input type="hidden" id="indexEdit" value="">
-    <button type="submit" style="margin-top:20px;">Valider</button>
-  </form>
-
-  <div class="chantier-list" id="chantierList">
-    <h2>Chantiers enregistrés</h2>
-    <div id="liste"></div>
+  <div id="sidebar">
+    <h2>Dossiers</h2>
+    <div id="dossierList"></div>
+    <input type="text" id="newDossierName" placeholder="Nouveau dossier" />
+    <button id="addDossierBtn">Ajouter dossier</button>
   </div>
 
-<script>
-  const form = document.getElementById('chantierForm');
-  const liste = document.getElementById('liste');
-  const indexEdit = document.getElementById('indexEdit');
+  <div id="main">
+    <h1>Suivi de Chantiers</h1>
 
-  let photosTemp = [];
+    <form id="chantierForm">
+      <label>Chantier <input type="text" id="chantier" required></label>
+      <label>Date de visite technique <input type="date" id="dateVisite"></label>
+      <label>Durée estimée (jours) <input type="number" id="dureeEstimee"></label>
+      <label>Date de début <input type="date" id="dateDebut"></label>
+      <label>Date de fin <input type="date" id="dateFin"></label>
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="visite"> Visite réalisée</label>
+        <label><input type="checkbox" id="transmise"> Transmise au BE</label>
+        <label><input type="checkbox" id="retour"> Retour client</label>
+      </div>
+      <label>Chef d'équipe <input type="text" id="chef"></label>
+      <label>Commentaire <textarea id="commentaire"></textarea></label>
+      <input type="hidden" id="indexEdit" value="">
+      <button type="submit">Valider</button>
+    </form>
 
-  document.getElementById('ajouterPhotoBtn').addEventListener('click', () => {
-    const nomPhoto = document.getElementById('nomPhoto').value.trim();
-    const photoInput = document.getElementById('photoInput');
-    const file = photoInput.files[0];
+    <div class="chantier-list" id="chantierList">
+      <h2>Chantiers dans dossier: <span id="currentDossierName"></span></h2>
+      <div id="liste"></div>
+    </div>
+  </div>
 
-    if (!nomPhoto) {
-      alert('Merci de saisir un nom pour la photo.');
-      return;
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    // Gestion dossiers + chantiers dans localStorage
+
+    const dossierListDiv = document.getElementById('dossierList');
+    const newDossierName = document.getElementById('newDossierName');
+    const addDossierBtn = document.getElementById('addDossierBtn');
+    const currentDossierNameSpan = document.getElementById('currentDossierName');
+    const liste = document.getElementById('liste');
+    const form = document.getElementById('chantierForm');
+    const indexEdit = document.getElementById('indexEdit');
+
+    let dossiers = [];
+    let chantiers = [];
+    let currentDossier = null;
+
+    // Sauvegarder dossiers
+    function enregistrerDossiers() {
+      localStorage.setItem('dossiers', JSON.stringify(dossiers));
     }
-    if (!file) {
-      alert('Merci de sélectionner une photo.');
-      return;
+
+    // Charger dossiers
+    function chargerDossiers() {
+      dossiers = JSON.parse(localStorage.getItem('dossiers') || '[]');
     }
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      photosTemp.push({ nom: nomPhoto, data: e.target.result });
-      afficherPhotosTemp();
-      document.getElementById('nomPhoto').value = '';
-      photoInput.value = '';
-    };
-    reader.readAsDataURL(file);
-  });
+    // Sauvegarder chantiers
+    function enregistrerChantiers() {
+      localStorage.setItem('chantiers', JSON.stringify(chantiers));
+    }
 
-  function afficherPhotosTemp() {
-    const container = document.getElementById('photosTemp');
-    container.innerHTML = '';
-    photosTemp.forEach((p, i) => {
-      const div = document.createElement('div');
-      div.className = 'photo-item';
-      div.innerHTML = `
-        <img src="${p.data}" alt="${p.nom}" class="photo-preview" title="${p.nom}">
-        <button title="Supprimer photo" onclick="supprimerPhotoTemp(${i})">&times;</button>
-        <div>${p.nom}</div>
-      `;
-      container.appendChild(div);
-    });
-  }
+    // Charger chantiers
+    function chargerChantiers() {
+      chantiers = JSON.parse(localStorage.getItem('chantiers') || '[]');
+    }
 
-  function supprimerPhotoTemp(index) {
-    photosTemp.splice(index, 1);
-    afficherPhotosTemp();
-  }
+    // Afficher liste dossiers
+    function afficherDossiers() {
+      dossierListDiv.innerHTML = '';
+      dossiers.forEach((dossier, i) => {
+        const div = document.createElement('div');
+        div.textContent = dossier;
+        div.className = 'folder-item' + (dossier === currentDossier ? ' active' : '');
+        div.onclick = () => {
+          currentDossier = dossier;
+          currentDossierNameSpan.textContent = currentDossier;
+          afficherDossiers();
+          afficherChantiers();
+          form.reset();
+          indexEdit.value = '';
+        };
+        dossierListDiv.appendChild(div);
+      });
+    }
 
-  function enregistrerChantiers(chantiers) {
-    localStorage.setItem('chantiers', JSON.stringify(chantiers));
-  }
-
-  function chargerChantiers() {
-    return JSON.parse(localStorage.getItem('chantiers') || '[]');
-  }
-
-  function afficherChantiers() {
-    const chantiers = chargerChantiers();
-    liste.innerHTML = '';
-    chantiers.forEach((c, index) => {
-      const div = document.createElement('div');
-      div.className = 'chantier';
-
-      let photosHTML = '';
-      if (c.photos && c.photos.length > 0) {
-        photosHTML = '<div style="margin-top:10px;">Photos :<br><div style="display:flex; flex-wrap: wrap; gap:10px;">';
-        c.photos.forEach(p => {
-          photosHTML += `<div><img src="${p.data}" alt="${p.nom}" style="max-width:80px; max-height:80px; border:1px solid #ccc; border-radius:5px;"><br><small>${p.nom}</small></div>`;
-        });
-        photosHTML += '</div></div>';
+    // Afficher chantiers filtrés par dossier
+    function afficherChantiers() {
+      liste.innerHTML = '';
+      if (!currentDossier) {
+        liste.innerHTML = '<p>Veuillez créer et sélectionner un dossier.</p>';
+        return;
       }
+      const chantiersFiltres = chantiers.filter(c => c.dossier === currentDossier);
+      if (chantiersFiltres.length === 0) {
+        liste.innerHTML = '<p>Aucun chantier dans ce dossier.</p>';
+        return;
+      }
+      chantiersFiltres.forEach((c, index) => {
+        const div = document.createElement('div');
+        div.className = 'chantier';
+        div.innerHTML = `
+          <strong>${c.chantier}</strong><br>
+          Visite : ${c.dateVisite || '-'} | Début : ${c.dateDebut || '-'} | Fin : ${c.dateFin || '-'} | Durée : ${c.dureeEstimee || '-'} jours<br>
+          Chef : ${c.chef || '-'}<br>
+          Commentaire : ${c.commentaire || '-'}<br>
+          Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
+          <div class="actions">
+            <button class="edit-btn" onclick="modifierChantierGlobal(${chantiers.indexOf(c)})">Modifier</button>
+            <button class="delete-btn" onclick="supprimerChantier(${chantiers.indexOf(c)})">Supprimer</button>
+            <button class="export-btn" onclick="exporterPDF(${chantiers.indexOf(c)})">Exporter PDF</button>
+          </div>
+        `;
+        liste.appendChild(div);
+      });
+    }
 
-      div.innerHTML = `
-        <strong>${c.chantier}</strong><br>
-        Visite : ${c.dateVisite || '-'} | Début : ${c.dateDebut || '-'} | Fin : ${c.dateFin || '-'} | Durée : ${c.dureeEstimee || '-'} jours<br>
-        Chef : ${c.chef || '-'}<br>
-        Commentaire : ${c.commentaire || '-'}<br>
-        Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
-        ${photosHTML}
-        <div style="margin-top: 10px;">
-          <button class="edit-btn" onclick="modifierChantier(${index})">Modifier</button>
-          <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
-          <button class="export-pdf-btn" onclick="exporterPDF(${index})">Exporter PDF</button>
-        </div>
-      `;
-      liste.appendChild(div);
-    });
-  }
+    // Ajouter dossier
+    addDossierBtn.onclick = () => {
+      const nom = newDossierName.value.trim();
+      if (!nom) {
+        alert('Nom du dossier obligatoire');
+        return;
+      }
+      if (dossiers.includes(nom)) {
+        alert('Ce dossier existe déjà');
+        return;
+      }
+      dossiers.push(nom);
+      enregistrerDossiers();
+      newDossierName.value = '';
+      currentDossier = nom;
+      currentDossierNameSpan.textContent = currentDossier;
+      afficherDossiers();
+      afficherChantiers();
+    };
 
-  function supprimerChantier(index) {
-    if (confirm('Supprimer ce chantier ?')) {
-      const chantiers = chargerChantiers();
+    // Supprimer chantier
+    function supprimerChantier(index) {
+      if (!confirm('Supprimer ce chantier ?')) return;
       chantiers.splice(index, 1);
-      enregistrerChantiers(chantiers);
+      enregistrerChantiers();
       afficherChantiers();
     }
-  }
 
-  function modifierChantier(index) {
-    const chantiers = chargerChantiers();
-    const c = chantiers[index];
-    document.getElementById('chantier').value = c.chantier;
-    document.getElementById('dateVisite').value = c.dateVisite || '';
-    document.getElementById('dureeEstimee').value = c.dureeEstimee || '';
-    document.getElementById('dateDebut').value = c.dateDebut || '';
-    document.getElementById('dateFin').value = c.dateFin || '';
-    document.getElementById('chef').value = c.chef || '';
-    document.getElementById('commentaire').value = c.commentaire || '';
-    document.getElementById('visite').checked = c.visite || false;
-    document.getElementById('transmise').checked = c.transmise || false;
-    document.getElementById('retour').checked = c.retour || false;
-    indexEdit.value = index;
-
-    photosTemp = c.photos ? [...c.photos] : [];
-    afficherPhotosTemp();
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-
-    const chantier = document.getElementById('chantier').value.trim();
-    if (!chantier) {
-      alert('Le nom du chantier est obligatoire');
-      return;
+    // Modifier chantier : charge dans le formulaire
+    function modifierChantierGlobal(index) {
+      const c = chantiers[index];
+      document.getElementById('chantier').value = c.chantier;
+      document.getElementById('dateVisite').value = c.dateVisite || '';
+      document.getElementById('dureeEstimee').value = c.dureeEstimee || '';
+      document.getElementById('dateDebut').value = c.dateDebut || '';
+      document.getElementById('dateFin').value = c.dateFin || '';
+      document.getElementById('chef').value = c.chef || '';
+      document.getElementById('commentaire').value = c.commentaire || '';
+      document.getElementById('visite').checked = c.visite || false;
+      document.getElementById('transmise').checked = c.transmise || false;
+      document.getElementById('retour').checked = c.retour || false;
+      indexEdit.value = index;
     }
 
-    const chantiers = chargerChantiers();
-
-    const nouveauChantier = {
-      chantier,
-      dateVisite: document.getElementById('dateVisite').value,
-      dureeEstimee: document.getElementById('dureeEstimee').value,
-      dateDebut: document.getElementById('dateDebut').value,
-      dateFin: document.getElementById('dateFin').value,
-      chef: document.getElementById('chef').value.trim(),
-      commentaire: document.getElementById('commentaire').value.trim(),
-      visite: document.getElementById('visite').checked,
-      transmise: document.getElementById('transmise').checked,
-      retour: document.getElementById('retour').checked,
-      photos: photosTemp.length > 0 ? [...photosTemp] : [],
-    };
-
-    if (indexEdit.value === '') {
-      // Ajout
-      chantiers.push(nouveauChantier);
-    } else {
-      // Modification
-      chantiers[parseInt(indexEdit.value)] = nouveauChantier;
-    }
-
-    enregistrerChantiers(chantiers);
-    afficherChantiers();
-
-    form.reset();
-    photosTemp = [];
-    afficherPhotosTemp();
-    indexEdit.value = '';
-  });
-
-  // Initialisation
-  afficherChantiers();
-
-  // Export PDF avec jsPDF
-  async function exporterPDF(index) {
-    const { jsPDF } = window.jspdf;
-    const chantiers = chargerChantiers();
-    const c = chantiers[index];
-
-    const pdf = new jsPDF();
-
-    pdf.setFontSize(16);
-    pdf.text(`Chantier: ${c.chantier}`, 10, 20);
-
-    pdf.setFontSize(12);
-    pdf.text(`Date de visite technique: ${c.dateVisite || '-'}`, 10, 30);
-    pdf.text(`Durée estimée: ${c.dureeEstimee || '-'} jours`, 10, 37);
-    pdf.text(`Date de début: ${c.dateDebut || '-'}`, 10, 44);
-    pdf.text(`Date de fin: ${c.dateFin || '-'}`, 10, 51);
-    pdf.text(`Chef d'équipe: ${c.chef || '-'}`, 10, 58);
-
-    pdf.text(`Visite réalisée: ${c.visite ? 'Oui' : 'Non'}`, 10, 65);
-    pdf.text(`Transmise BE: ${c.transmise ? 'Oui' : 'Non'}`, 10, 72);
-    pdf.text(`Retour client: ${c.retour ? 'Oui' : 'Non'}`, 10, 79);
-
-    pdf.text('Commentaire:', 10, 88);
-    pdf.setFontSize(11);
-    const splitComment = pdf.splitTextToSize(c.commentaire || '-', 180);
-    pdf.text(splitComment, 10, 95);
-
-    // Photos
-    if (c.photos && c.photos.length > 0) {
-      let yPos = 95 + splitComment.length * 7 + 10;
-      pdf.setFontSize(12);
-      pdf.text('Photos:', 10, yPos);
-      yPos += 6;
-      for (const p of c.photos) {
-        try {
-          pdf.addImage(p.data, 'JPEG', 10, yPos, 50, 50);
-          pdf.text(p.nom, 65, yPos + 25);
-          yPos += 60;
-          if (yPos > 270) {
-            pdf.addPage();
-            yPos = 20;
-          }
-        } catch (err) {
-          console.error('Erreur ajout image au PDF:', err);
-        }
+    // Soumission formulaire chantier
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!currentDossier) {
+        alert('Veuillez sélectionner un dossier avant d\'ajouter un chantier.');
+        return;
       }
+      const chantierNom = document.getElementById('chantier').value.trim();
+      if (!chantierNom) {
+        alert('Le nom du chantier est obligatoire');
+        return;
+      }
+
+      const nouveauChantier = {
+        chantier: chantierNom,
+        dateVisite: document.getElementById('dateVisite').value,
+        dureeEstimee: document.getElementById('dureeEstimee').value,
+        dateDebut: document.getElementById('dateDebut').value,
+        dateFin: document.getElementById('dateFin').value,
+        chef: document.getElementById('chef').value.trim(),
+        commentaire: document.getElementById('commentaire').value.trim(),
+        visite: document.getElementById('visite').checked,
+        transmise: document.getElementById('transmise').checked,
+        retour: document.getElementById('retour').checked,
+        dossier: currentDossier
+      };
+
+      if (indexEdit.value === '') {
+        chantiers.push(nouveauChantier);
+      } else {
+        chantiers[parseInt(indexEdit.value)] = nouveauChantier;
+      }
+
+      enregistrerChantiers();
+      afficherChantiers();
+      form.reset();
+      indexEdit.value = '';
+    });
+
+    // Export PDF
+    async function exporterPDF(index) {
+      const { jsPDF } = window.jspdf;
+      const c = chantiers[index];
+      const pdf = new jsPDF();
+
+      pdf.setFontSize(16);
+      pdf.text(`Chantier: ${c.chantier}`, 10, 20);
+
+      pdf.setFontSize(12);
+      pdf.text(`Date de visite technique: ${c.dateVisite || '-'}`, 10, 30);
+      pdf.text(`Durée estimée: ${c.dureeEstimee || '-'} jours`, 10, 37);
+      pdf.text(`Date de début: ${c.dateDebut || '-'}`, 10, 44);
+      pdf.text(`Date de fin: ${c.dateFin || '-'}`, 10, 51);
+      pdf.text(`Chef d'équipe: ${c.chef || '-'}`, 10, 58);
+
+      pdf.text(`Visite réalisée: ${c.visite ? 'Oui' : 'Non'}`, 10, 65);
+      pdf.text(`Transmise BE: ${c.transmise ? 'Oui' : 'Non'}`, 10, 72);
+      pdf.text(`Retour client: ${c.retour ? 'Oui' : 'Non'}`, 10, 79);
+
+      pdf.text('Commentaire:', 10, 88);
+      pdf.setFontSize(11);
+      const splitComment = pdf.splitTextToSize(c.commentaire || '-', 180);
+      pdf.text(splitComment, 10, 95);
+
+      pdf.save(`${c.chantier.replace(/\s+/g, '_')}_chantier.pdf`);
     }
 
-    pdf.save(`${c.chantier.replace(/\s+/g, '_')}_chantier.pdf`);
-  }
-</script>
+    // Initialisation
+    function init() {
+      chargerDossiers();
+      chargerChantiers();
+      if (dossiers.length > 0) {
+        currentDossier = dossiers[0];
+      }
+      currentDossierNameSpan.textContent = currentDossier || 'Aucun';
+      afficherDossiers();
+      afficherChantiers();
+    }
+
+    init();
+
+    // Rendre fonctions globales accessibles depuis HTML inline
+    window.supprimerChantier = supprimerChantier;
+    window.modifierChantierGlobal = modifierChantierGlobal;
+    window.exporterPDF = exporterPDF;
+
+  </script>
 </body>
 </html>
