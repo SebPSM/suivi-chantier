@@ -275,14 +275,14 @@
 
     // Initialisation au chargement
     const params = new URLSearchParams(window.location.search);
-    const dossierURL = decodeURIComponent(params.get("dossier") || "");
-    if (dossierURL) {
-      currentDossier = dossierURL;
+    const dossierParam = params.get("dossier");
+    if (dossierParam) {
+      currentDossier = dossierParam;
       if (!dossiers.includes(currentDossier)) {
         dossiers.push(currentDossier);
         enregistrerDossiers();
       }
-      dossierForm.style.display = "none"; // On cache création dossier
+      dossierForm.style.display = "none"; // cache le formulaire création dossier
       currentDossierTitle.textContent = `Dossier : ${currentDossier}`;
       chantierForm.style.display = "none";
       chantierListDiv.style.display = "block";
@@ -305,7 +305,6 @@
 
       afficherListeDossiers();
     } else {
-      // Pas de dossier sélectionné : affiche création dossier et liste
       dossierForm.style.display = "block";
       chantierForm.style.display = "none";
       chantierListDiv.style.display = "none";
