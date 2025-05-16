@@ -7,13 +7,13 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1, h2 { text-align: center; }
-    form, .chantier-list, .dossier-section { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto; }
+    form, .chantier-list, .dossier-section, .liste-dossiers { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto; }
     label { display: block; margin-top: 10px; }
     input, textarea, button { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
     .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
     .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
-    .delete-btn, .edit-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
+    .delete-btn, .edit-btn, .ouvrir-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     .delete-btn { background: #e74c3c; margin-left: 10px; }
     .export-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
   </style>
@@ -28,6 +28,8 @@
     </form>
     <h2 id="currentDossierTitle"></h2>
   </div>
+
+  <div class="liste-dossiers" id="listeDossiers"></div>
 
   <form id="chantierForm" style="display: none;">
     <label>Chantier <input type="text" id="chantier" required></label>
@@ -65,6 +67,7 @@
     const chantierListDiv = document.getElementById('chantierList');
     const currentDossierTitle = document.getElementById('currentDossierTitle');
     const exportButtonsDiv = document.getElementById('exportButtons');
+    const listeDossiersDiv = document.getElementById('listeDossiers');
 
     let dossiers = JSON.parse(localStorage.getItem('dossiers') || '[]');
     let currentDossier = null;
@@ -99,6 +102,19 @@
           <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
         `;
         liste.appendChild(div);
+      });
+    }
+
+    function afficherListeDossiers() {
+      listeDossiersDiv.innerHTML = '<h2>Dossiers existants</h2>';
+      dossiers.forEach(nom => {
+        const btn = document.createElement('button');
+        btn.className = 'ouvrir-btn';
+        btn.textContent = `📁 ${nom}`;
+        btn.onclick = () => {
+          window.location.href = `${window.location.pathname}?dossier=${encodeURIComponent(nom)}`;
+        };
+        listeDossiersDiv.appendChild(btn);
       });
     }
 
@@ -191,6 +207,8 @@
       chantierListDiv.style.display = 'block';
       exportButtonsDiv.style.display = 'flex';
       afficherChantiers();
+    } else {
+      afficherListeDossiers();
     }
   </script>
 </body>
