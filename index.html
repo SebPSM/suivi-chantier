@@ -92,7 +92,7 @@
         let photosHtml = '';
         if(c.photos && c.photos.length > 0) {
           photosHtml = '<div class="photo-list">';
-          c.photos.forEach((p, i) => {
+          c.photos.forEach((p) => {
             photosHtml += `
               <div class="photo-item" title="${p.name}">
                 <img src="${p.data}" alt="${p.name}" />
@@ -154,4 +154,56 @@
         div.innerHTML = `
           <img src="${p.data}" alt="${p.name}" />
           <div class="photo-item-name">${p.name}</div>
-          <button class="photo-remove-btn" onclick="supprimerPhotoTemp(${i
+          <button class="photo-remove-btn" onclick="supprimerPhotoTemp(${i})">X</button>
+        `;
+        photoPreviewList.appendChild(div);
+      });
+    }
+
+    // Supprimer une photo temporaire
+    function supprimerPhotoTemp(i) {
+      photosTemp.splice(i, 1);
+      afficherPhotosTemp();
+    }
+
+    addPhotoBtn.addEventListener('click', () => {
+      const file = photoInput.files[0];
+      const name = photoNameInput.value.trim();
+      if (!file) {
+        alert('Veuillez choisir une photo.');
+        return;
+      }
+      if (!name) {
+        alert('Veuillez donner un nom à la photo.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        photosTemp.push({ name, data: e.target.result });
+        afficherPhotosTemp();
+        photoInput.value = '';
+        photoNameInput.value = '';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const chantier = {
+        chantier: document.getElementById('chantier').value,
+        dateVisite: document.getElementById('dateVisite').value,
+        dureeEstimee: document.getElementById('dureeEstimee').value,
+        dateDebut: document.getElementById('dateDebut').value,
+        dateFin: document.getElementById('dateFin').value,
+        visite: document.getElementById('visite').checked,
+        transmise: document.getElementById('transmise').checked,
+        retour: document.getElementById('retour').checked,
+        chef: document.getElementById('chef').value,
+        commentaire: document.getElementById('commentaire').value,
+        photos: photosTemp // on stocke les photos liées au chantier
+      };
+
+      const chantiers = chargerChantiers();
+      const index = indexEdit.value;
+      if (index !== '') {
+        chantiers[index] =
