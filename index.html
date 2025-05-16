@@ -5,118 +5,192 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Suivi de Chantiers avec Dossiers</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; display: flex; gap: 20px; }
-    #sidebar { width: 220px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; height: fit-content; }
-    #main { flex: 1; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1, h2 { text-align: center; }
-    form, .chantier-list { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; margin-top: 20px; }
+    #container { display: flex; max-width: 1000px; margin: 0 auto; gap: 20px; }
+    #sidebar {
+      flex: 1;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    #main {
+      flex: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+      max-height: 600px;
+      overflow-y: auto;
+    }
     label { display: block; margin-top: 10px; }
-    input, textarea, select, button { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-    .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
-    .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
-    .checkbox-group label { display: flex; align-items: center; gap: 5px; }
-    button { cursor: pointer; }
-    .folder-item { padding: 8px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
-    .folder-item.active { background: #3498db; color: white; }
-    .btn-small { width: auto; padding: 5px 10px; font-size: 0.9em; }
-    .actions { margin-top: 10px; display: flex; gap: 5px; flex-wrap: wrap; }
+    input, textarea, button, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+      background: #3498db;
+      color: white;
+      border: none;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    .chantier {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+      background: #f1f1f1;
+    }
+    .checkbox-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .edit-btn, .delete-btn, .export-btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .delete-btn {
+      background: #e74c3c;
+      margin-left: 10px;
+    }
+    .export-btn {
+      background: #27ae60;
+      margin-left: 10px;
+    }
+    #dossierList div {
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #dossierList div.selected {
+      background: #3498db;
+      color: white;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-  <div id="sidebar">
-    <h2>Dossiers</h2>
-    <div id="dossierList"></div>
-    <input type="text" id="newDossierName" placeholder="Nouveau dossier" />
-    <button id="addDossierBtn">Ajouter dossier</button>
-  </div>
+  <h1>Suivi de Chantiers avec Dossiers</h1>
 
-  <div id="main">
-    <h1>Suivi de Chantiers</h1>
+  <div id="container">
 
-    <form id="chantierForm">
-      <label>Chantier <input type="text" id="chantier" required></label>
-      <label>Date de visite technique <input type="date" id="dateVisite"></label>
-      <label>Durée estimée (jours) <input type="number" id="dureeEstimee"></label>
-      <label>Date de début <input type="date" id="dateDebut"></label>
-      <label>Date de fin <input type="date" id="dateFin"></label>
-      <div class="checkbox-group">
-        <label><input type="checkbox" id="visite"> Visite réalisée</label>
-        <label><input type="checkbox" id="transmise"> Transmise au BE</label>
-        <label><input type="checkbox" id="retour"> Retour client</label>
-      </div>
-      <label>Chef d'équipe <input type="text" id="chef"></label>
-      <label>Commentaire <textarea id="commentaire"></textarea></label>
-      <input type="hidden" id="indexEdit" value="">
-      <button type="submit">Valider</button>
-    </form>
-
-    <div class="chantier-list" id="chantierList">
-      <h2>Chantiers dans dossier: <span id="currentDossierName"></span></h2>
-      <div id="liste"></div>
+    <div id="sidebar">
+      <h2>Dossiers</h2>
+      <div id="dossierList"></div>
+      <input type="text" id="newDossier" placeholder="Nom du nouveau dossier" />
+      <button id="addDossierBtn">Ajouter dossier</button>
+      <p><strong>Dossier sélectionné : </strong><span id="currentDossierName">Aucun</span></p>
     </div>
+
+    <div id="main">
+      <h2>Chantiers</h2>
+      <button id="exportExcelBtn">Exporter Excel (CSV)</button>
+
+      <form id="chantierForm">
+        <label>Chantier <input type="text" id="chantier" required /></label>
+        <label>Date de visite technique <input type="date" id="dateVisite" /></label>
+        <label>Durée estimée (jours) <input type="number" id="dureeEstimee" /></label>
+        <label>Date de début <input type="date" id="dateDebut" /></label>
+        <label>Date de fin <input type="date" id="dateFin" /></label>
+
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="visite" /> Visite réalisée</label>
+          <label><input type="checkbox" id="transmise" /> Transmise au BE</label>
+          <label><input type="checkbox" id="retour" /> Retour client</label>
+        </div>
+
+        <label>Chef d'équipe <input type="text" id="chef" /></label>
+        <label>Commentaire <textarea id="commentaire"></textarea></label>
+        <input type="hidden" id="indexEdit" value="" />
+        <button type="submit">Valider</button>
+      </form>
+
+      <div class="chantier-list" id="chantierList">
+        <div id="liste"></div>
+      </div>
+    </div>
+
   </div>
 
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script>
-    // Gestion dossiers + chantiers dans localStorage
-
-    const dossierListDiv = document.getElementById('dossierList');
-    const newDossierName = document.getElementById('newDossierName');
-    const addDossierBtn = document.getElementById('addDossierBtn');
-    const currentDossierNameSpan = document.getElementById('currentDossierName');
-    const liste = document.getElementById('liste');
-    const form = document.getElementById('chantierForm');
-    const indexEdit = document.getElementById('indexEdit');
-
     let dossiers = [];
     let chantiers = [];
     let currentDossier = null;
 
-    // Sauvegarder dossiers
+    const dossierList = document.getElementById('dossierList');
+    const currentDossierNameSpan = document.getElementById('currentDossierName');
+
+    const form = document.getElementById('chantierForm');
+    const liste = document.getElementById('liste');
+    const indexEdit = document.getElementById('indexEdit');
+
+    // Chargement depuis localStorage
+    function chargerDossiers() {
+      dossiers = JSON.parse(localStorage.getItem('dossiers') || '[]');
+    }
     function enregistrerDossiers() {
       localStorage.setItem('dossiers', JSON.stringify(dossiers));
     }
 
-    // Charger dossiers
-    function chargerDossiers() {
-      dossiers = JSON.parse(localStorage.getItem('dossiers') || '[]');
+    function chargerChantiers() {
+      chantiers = JSON.parse(localStorage.getItem('chantiers') || '[]');
     }
-
-    // Sauvegarder chantiers
     function enregistrerChantiers() {
       localStorage.setItem('chantiers', JSON.stringify(chantiers));
     }
 
-    // Charger chantiers
-    function chargerChantiers() {
-      chantiers = JSON.parse(localStorage.getItem('chantiers') || '[]');
-    }
-
-    // Afficher liste dossiers
+    // Affichage dossiers
     function afficherDossiers() {
-      dossierListDiv.innerHTML = '';
-      dossiers.forEach((dossier, i) => {
+      dossierList.innerHTML = '';
+      dossiers.forEach(d => {
         const div = document.createElement('div');
-        div.textContent = dossier;
-        div.className = 'folder-item' + (dossier === currentDossier ? ' active' : '');
+        div.textContent = d;
+        div.className = (d === currentDossier) ? 'selected' : '';
         div.onclick = () => {
-          currentDossier = dossier;
-          currentDossierNameSpan.textContent = currentDossier;
+          currentDossier = d;
+          currentDossierNameSpan.textContent = d;
           afficherDossiers();
           afficherChantiers();
           form.reset();
           indexEdit.value = '';
         };
-        dossierListDiv.appendChild(div);
+        dossierList.appendChild(div);
       });
     }
 
-    // Afficher chantiers filtrés par dossier
+    // Affichage chantiers (filtrés par dossier)
     function afficherChantiers() {
       liste.innerHTML = '';
       if (!currentDossier) {
-        liste.innerHTML = '<p>Veuillez créer et sélectionner un dossier.</p>';
+        liste.innerHTML = '<p>Veuillez sélectionner un dossier.</p>';
         return;
       }
       const chantiersFiltres = chantiers.filter(c => c.dossier === currentDossier);
@@ -124,7 +198,9 @@
         liste.innerHTML = '<p>Aucun chantier dans ce dossier.</p>';
         return;
       }
+
       chantiersFiltres.forEach((c, index) => {
+        const globalIndex = chantiers.indexOf(c); // pour modifier/supprimer dans le tableau global
         const div = document.createElement('div');
         div.className = 'chantier';
         div.innerHTML = `
@@ -133,58 +209,64 @@
           Chef : ${c.chef || '-'}<br>
           Commentaire : ${c.commentaire || '-'}<br>
           Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
-          <div class="actions">
-            <button class="edit-btn" onclick="modifierChantierGlobal(${chantiers.indexOf(c)})">Modifier</button>
-            <button class="delete-btn" onclick="supprimerChantier(${chantiers.indexOf(c)})">Supprimer</button>
-            <button class="export-btn" onclick="exporterPDF(${chantiers.indexOf(c)})">Exporter PDF</button>
-          </div>
+          <button class="edit-btn" onclick="modifierChantierGlobal(${globalIndex})">Modifier</button>
+          <button class="delete-btn" onclick="supprimerChantier(${globalIndex})">Supprimer</button>
+          <button class="export-btn" onclick="exporterPDF(${globalIndex})">Exporter PDF</button>
         `;
         liste.appendChild(div);
       });
     }
 
-    // Ajouter dossier
-    addDossierBtn.onclick = () => {
-      const nom = newDossierName.value.trim();
+    // Ajouter un dossier
+    document.getElementById('addDossierBtn').onclick = () => {
+      const nom = document.getElementById('newDossier').value.trim();
       if (!nom) {
-        alert('Nom du dossier obligatoire');
+        alert('Veuillez entrer un nom de dossier.');
         return;
       }
       if (dossiers.includes(nom)) {
-        alert('Ce dossier existe déjà');
+        alert('Ce dossier existe déjà.');
         return;
       }
       dossiers.push(nom);
       enregistrerDossiers();
-      newDossierName.value = '';
       currentDossier = nom;
-      currentDossierNameSpan.textContent = currentDossier;
+      currentDossierNameSpan.textContent = nom;
+      document.getElementById('newDossier').value = '';
       afficherDossiers();
       afficherChantiers();
+      form.reset();
+      indexEdit.value = '';
     };
 
     // Supprimer chantier
     function supprimerChantier(index) {
-      if (!confirm('Supprimer ce chantier ?')) return;
+      if (!confirm('Confirmer la suppression de ce chantier ?')) return;
       chantiers.splice(index, 1);
       enregistrerChantiers();
       afficherChantiers();
+      form.reset();
+      indexEdit.value = '';
     }
 
-    // Modifier chantier : charge dans le formulaire
+    // Modifier chantier
     function modifierChantierGlobal(index) {
       const c = chantiers[index];
+      if (!c) return;
       document.getElementById('chantier').value = c.chantier;
       document.getElementById('dateVisite').value = c.dateVisite || '';
       document.getElementById('dureeEstimee').value = c.dureeEstimee || '';
       document.getElementById('dateDebut').value = c.dateDebut || '';
       document.getElementById('dateFin').value = c.dateFin || '';
-      document.getElementById('chef').value = c.chef || '';
-      document.getElementById('commentaire').value = c.commentaire || '';
       document.getElementById('visite').checked = c.visite || false;
       document.getElementById('transmise').checked = c.transmise || false;
       document.getElementById('retour').checked = c.retour || false;
+      document.getElementById('chef').value = c.chef || '';
+      document.getElementById('commentaire').value = c.commentaire || '';
       indexEdit.value = index;
+      currentDossier = c.dossier;
+      currentDossierNameSpan.textContent = currentDossier;
+      afficherDossiers();
     }
 
     // Soumission formulaire chantier
@@ -251,27 +333,59 @@
       const splitComment = pdf.splitTextToSize(c.commentaire || '-', 180);
       pdf.text(splitComment, 10, 95);
 
-      pdf.save(`${c.chantier.replace(/\s+/g, '_')}_chantier.pdf`);
+      pdf.save(`${c.chantier.replace(/\s+/g, '_')}.pdf`);
     }
+
+    // Export Excel (CSV)
+    document.getElementById('exportExcelBtn').addEventListener('click', () => {
+      if (!currentDossier) {
+        alert('Veuillez sélectionner un dossier avant d\'exporter.');
+        return;
+      }
+      const chantiersFiltres = chantiers.filter(c => c.dossier === currentDossier);
+      if (chantiersFiltres.length === 0) {
+        alert('Aucun chantier à exporter dans ce dossier.');
+        return;
+      }
+
+      const headers = ['Chantier', 'Date visite', 'Durée estimée', 'Date début', 'Date fin', 'Chef', 'Visite réalisée', 'Transmise BE', 'Retour client', 'Commentaire'];
+      const csvRows = [];
+      csvRows.push(headers.join(';'));
+
+      chantiersFiltres.forEach(c => {
+        const row = [
+          c.chantier,
+          c.dateVisite || '',
+          c.dureeEstimee || '',
+          c.dateDebut || '',
+          c.dateFin || '',
+          c.chef || '',
+          c.visite ? 'Oui' : 'Non',
+          c.transmise ? 'Oui' : 'Non',
+          c.retour ? 'Oui' : 'Non',
+          (c.commentaire || '').replace(/(\r\n|\n|\r)/gm, ' ')
+        ];
+        const escapedRow = row.map(field => `"${field.replace(/"/g, '""')}"`);
+        csvRows.push(escapedRow.join(';'));
+      });
+
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentDossier.replace(/\s+/g, '_')}_chantiers.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
 
     // Initialisation
-    function init() {
-      chargerDossiers();
-      chargerChantiers();
-      if (dossiers.length > 0) {
-        currentDossier = dossiers[0];
-      }
-      currentDossierNameSpan.textContent = currentDossier || 'Aucun';
-      afficherDossiers();
-      afficherChantiers();
-    }
-
-    init();
-
-    // Rendre fonctions globales accessibles depuis HTML inline
-    window.supprimerChantier = supprimerChantier;
-    window.modifierChantierGlobal = modifierChantierGlobal;
-    window.exporterPDF = exporterPDF;
+    chargerDossiers();
+    chargerChantiers();
+    afficherDossiers();
+    afficherChantiers();
 
   </script>
 </body>
