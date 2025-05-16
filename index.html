@@ -15,7 +15,6 @@
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
     .delete-btn, .edit-btn, .ouvrir-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     .delete-btn { background: #e74c3c; margin-left: 10px; }
-    .export-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
     .supprimer-dossier-btn { background: #c0392b; color: white; border: none; margin-left: 10px; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
@@ -54,10 +53,6 @@
     <div id="liste"></div>
   </div>
 
-  <div class="export-btns" id="exportButtons" style="display: none;">
-    <button onclick="exporterCSV()">Exporter en Excel (CSV)</button>
-  </div>
-
   <script>
     const form = document.getElementById('chantierForm');
     const liste = document.getElementById('liste');
@@ -67,7 +62,6 @@
     const chantierForm = document.getElementById('chantierForm');
     const chantierListDiv = document.getElementById('chantierList');
     const currentDossierTitle = document.getElementById('currentDossierTitle');
-    const exportButtonsDiv = document.getElementById('exportButtons');
     const listeDossiersDiv = document.getElementById('listeDossiers');
 
     let dossiers = JSON.parse(localStorage.getItem('dossiers') || '[]');
@@ -127,8 +121,13 @@
             afficherListeDossiers();
           }
         };
+        const pdfBtn = document.createElement('button');
+        pdfBtn.textContent = '📄 PDF';
+        pdfBtn.className = 'ouvrir-btn';
+        pdfBtn.onclick = () => genererPDF(nom);
         container.appendChild(btn);
         container.appendChild(deleteBtn);
+        container.appendChild(pdfBtn);
         listeDossiersDiv.appendChild(container);
       });
     }
@@ -197,22 +196,24 @@
       window.location.href = `${window.location.pathname}?dossier=${encodeURIComponent(nom)}`;
     });
 
-    function exporterCSV() {
-      const chantiers = chargerChantiers();
-      let csv = 'Chantier,Date Visite,Durée Estimée,Date Début,Date Fin,Visite Réalisée,Transmise BE,Retour Client,Chef,Commentaire\n';
-      chantiers.forEach(c => {
-        csv += `${c.chantier},${c.dateVisite},${c.dureeEstimee},${c.dateDebut},${c.dateFin},${c.visite ? 'Oui' : 'Non'},${c.transmise ? 'Oui' : 'Non'},${c.retour ? 'Oui' : 'Non'},${c.chef},"${c.commentaire.replace(/"/g, '""')}"\n`;
+    function genererPDF(nomDossier) {
+      const chantiers = JSON.parse(localStorage.getItem('chantiers_' + nomDossier) || '[]');
+      let contenu = `Dossier : ${nomDossier}\n\n`;
+      chantiers.forEach((c, i) => {
+        contenu += `#${i+1} - ${c.chantier}\n`;
+        contenu += `Visite : ${c.dateVisite || '-'}\nDébut : ${c.dateDebut || '-'}\nFin : ${c.dateFin || '-'}\nDurée : ${c.dureeEstimee || '-'} jours\n`;
+        contenu += `Chef : ${c.chef || '-'}\nCommentaire : ${c.commentaire || '-'}\n`;
+        contenu += `Visite réalisée: ${c.visite ? 'Oui' : 'Non'}, Transmise BE: ${c.transmise ? 'Oui' : 'Non'}, Retour client: ${c.retour ? 'Oui' : 'Non'}\n\n`;
       });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([contenu], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = (currentDossier || 'chantiers') + '.csv';
+      a.download = nomDossier + '.pdf';
       a.click();
       URL.revokeObjectURL(url);
     }
 
-    // Lecture de l'URL pour dossier sélectionné
     const params = new URLSearchParams(window.location.search);
     const dossierURL = decodeURIComponent(params.get('dossier') || '');
     if (dossierURL) {
@@ -224,7 +225,6 @@
       currentDossierTitle.textContent = `Dossier : ${currentDossier}`;
       chantierForm.style.display = 'block';
       chantierListDiv.style.display = 'block';
-      exportButtonsDiv.style.display = 'flex';
       afficherChantiers();
     } else {
       afficherListeDossiers();
