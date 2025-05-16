@@ -1,40 +1,38 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Suivi de Chantiers - 1 chantier par dossier</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suivi de Chantiers</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1, h2 { text-align: center; }
-    form, .dossier-section, .liste-dossiers { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto; }
+    form, .chantier-list, .dossier-section, .liste-dossiers { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; max-width: 800px; margin: 20px auto; }
     label { display: block; margin-top: 10px; }
     input, textarea, button { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
+    .chantier { border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; background: #f1f1f1; }
     .checkbox-group { display: flex; gap: 10px; margin-top: 10px; }
     .checkbox-group label { display: flex; align-items: center; gap: 5px; }
-    .delete-btn, .ouvrir-btn, .supprimer-dossier-btn { 
-      background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; 
-    }
-    .delete-btn, .supprimer-dossier-btn { background: #e74c3c; margin-left: 10px; }
-    .supprimer-dossier-btn { background: #c0392b; }
+    .delete-btn, .edit-btn, .ouvrir-btn { background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
+    .delete-btn { background: #e74c3c; margin-left: 10px; }
+    .supprimer-dossier-btn { background: #c0392b; color: white; border: none; margin-left: 10px; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Suivi de Chantiers</h1>
 
-  <div class="dossier-section" id="dossierSection">
+  <div class="dossier-section">
     <form id="dossierForm">
       <label>Créer un dossier principal <input type="text" id="nouveauDossier" required></label>
       <button type="submit">Créer le dossier</button>
     </form>
     <h2 id="currentDossierTitle"></h2>
-    <button id="supprimerDossierBtn" style="display:none;" class="supprimer-dossier-btn">Supprimer ce dossier</button>
   </div>
 
   <div class="liste-dossiers" id="listeDossiers"></div>
 
-  <form id="chantierForm" style="display:none;">
-    <h2>Chantier du dossier</h2>
+  <form id="chantierForm" style="display: none;">
     <label>Chantier <input type="text" id="chantier" required></label>
     <label>Date de visite technique <input type="date" id="dateVisite"></label>
     <label>Durée estimée (jours) <input type="number" id="dureeEstimee"></label>
@@ -47,16 +45,25 @@
     </div>
     <label>Chef d'équipe <input type="text" id="chef"></label>
     <label>Commentaire <textarea id="commentaire"></textarea></label>
-    <button type="submit">Enregistrer le chantier</button>
+    <input type="hidden" id="indexEdit" value="">
+    <button type="submit">Valider</button>
   </form>
 
+  <div class="chantier-list" id="chantierList" style="display: none;">
+    <h2>Chantiers enregistrés</h2>
+    <div id="liste"></div>
+  </div>
+
   <script>
+    const form = document.getElementById('chantierForm');
+    const liste = document.getElementById('liste');
+    const indexEdit = document.getElementById('indexEdit');
     const dossierForm = document.getElementById('dossierForm');
     const nouveauDossierInput = document.getElementById('nouveauDossier');
-    const listeDossiersDiv = document.getElementById('listeDossiers');
     const chantierForm = document.getElementById('chantierForm');
+    const chantierListDiv = document.getElementById('chantierList');
     const currentDossierTitle = document.getElementById('currentDossierTitle');
-    const supprimerDossierBtn = document.getElementById('supprimerDossierBtn');
+    const listeDossiersDiv = document.getElementById('listeDossiers');
 
     let dossiers = JSON.parse(localStorage.getItem('dossiers') || '[]');
     let currentDossier = null;
@@ -65,22 +72,37 @@
       localStorage.setItem('dossiers', JSON.stringify(dossiers));
     }
 
-    function enregistrerChantier(chantier) {
+    function enregistrerChantiers(chantiers) {
       if (!currentDossier) return;
-      localStorage.setItem('chantier_' + currentDossier, JSON.stringify(chantier));
+      localStorage.setItem('chantiers_' + currentDossier, JSON.stringify(chantiers));
     }
 
-    function chargerChantier() {
-      if (!currentDossier) return null;
-      return JSON.parse(localStorage.getItem('chantier_' + currentDossier) || 'null');
+    function chargerChantiers() {
+      if (!currentDossier) return [];
+      return JSON.parse(localStorage.getItem('chantiers_' + currentDossier) || '[]');
+    }
+
+    function afficherChantiers() {
+      const chantiers = chargerChantiers();
+      liste.innerHTML = '';
+      chantiers.forEach((c, index) => {
+        const div = document.createElement('div');
+        div.className = 'chantier';
+        div.innerHTML = `
+          <strong>${c.chantier}</strong><br>
+          Visite : ${c.dateVisite || '-'} | Début : ${c.dateDebut || '-'} | Fin : ${c.dateFin || '-'} | Durée : ${c.dureeEstimee || '-'} jours<br>
+          Chef : ${c.chef || '-'}<br>
+          Commentaire : ${c.commentaire || '-'}<br>
+          Visite réalisée: ${c.visite ? '✅' : '❌'} | Transmise BE: ${c.transmise ? '✅' : '❌'} | Retour client: ${c.retour ? '✅' : '❌'}<br>
+          <button class="edit-btn" onclick="modifierChantier(${index})">Modifier</button>
+          <button class="delete-btn" onclick="supprimerChantier(${index})">Supprimer</button>
+        `;
+        liste.appendChild(div);
+      });
     }
 
     function afficherListeDossiers() {
       listeDossiersDiv.innerHTML = '<h2>Dossiers existants</h2>';
-      if(dossiers.length === 0){
-        listeDossiersDiv.innerHTML += "<p>Aucun dossier trouvé.</p>";
-        return;
-      }
       dossiers.forEach(nom => {
         const container = document.createElement('div');
         const btn = document.createElement('button');
@@ -95,34 +117,71 @@
         deleteBtn.onclick = () => {
           if (confirm(`Supprimer définitivement le dossier "${nom}" ?`)) {
             dossiers = dossiers.filter(d => d !== nom);
-            localStorage.removeItem('chantier_' + nom);
+            localStorage.removeItem('chantiers_' + nom);
             enregistrerDossiers();
             afficherListeDossiers();
           }
         };
+        const pdfBtn = document.createElement('button');
+        pdfBtn.textContent = '📄 PDF';
+        pdfBtn.className = 'ouvrir-btn';
+        pdfBtn.onclick = () => genererPDF(nom);
         container.appendChild(btn);
         container.appendChild(deleteBtn);
+        container.appendChild(pdfBtn);
         listeDossiersDiv.appendChild(container);
       });
     }
 
-    function afficherChantier() {
-      const c = chargerChantier();
-      if (!c) {
-        chantierForm.reset();
-        return;
-      }
-      document.getElementById('chantier').value = c.chantier || '';
-      document.getElementById('dateVisite').value = c.dateVisite || '';
-      document.getElementById('dureeEstimee').value = c.dureeEstimee || '';
-      document.getElementById('dateDebut').value = c.dateDebut || '';
-      document.getElementById('dateFin').value = c.dateFin || '';
-      document.getElementById('visite').checked = c.visite || false;
-      document.getElementById('transmise').checked = c.transmise || false;
-      document.getElementById('retour').checked = c.retour || false;
-      document.getElementById('chef').value = c.chef || '';
-      document.getElementById('commentaire').value = c.commentaire || '';
+    function supprimerChantier(index) {
+      const chantiers = chargerChantiers();
+      chantiers.splice(index, 1);
+      enregistrerChantiers(chantiers);
+      afficherChantiers();
     }
+
+    function modifierChantier(index) {
+      const chantiers = chargerChantiers();
+      const c = chantiers[index];
+      document.getElementById('chantier').value = c.chantier;
+      document.getElementById('dateVisite').value = c.dateVisite;
+      document.getElementById('dureeEstimee').value = c.dureeEstimee;
+      document.getElementById('dateDebut').value = c.dateDebut;
+      document.getElementById('dateFin').value = c.dateFin;
+      document.getElementById('visite').checked = c.visite;
+      document.getElementById('transmise').checked = c.transmise;
+      document.getElementById('retour').checked = c.retour;
+      document.getElementById('chef').value = c.chef;
+      document.getElementById('commentaire').value = c.commentaire;
+      indexEdit.value = index;
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const chantier = {
+        chantier: document.getElementById('chantier').value,
+        dateVisite: document.getElementById('dateVisite').value,
+        dureeEstimee: document.getElementById('dureeEstimee').value,
+        dateDebut: document.getElementById('dateDebut').value,
+        dateFin: document.getElementById('dateFin').value,
+        visite: document.getElementById('visite').checked,
+        transmise: document.getElementById('transmise').checked,
+        retour: document.getElementById('retour').checked,
+        chef: document.getElementById('chef').value,
+        commentaire: document.getElementById('commentaire').value
+      };
+      const chantiers = chargerChantiers();
+      const index = indexEdit.value;
+      if (index !== '') {
+        chantiers[index] = chantier;
+        indexEdit.value = '';
+      } else {
+        chantiers.push(chantier);
+      }
+      enregistrerChantiers(chantiers);
+      form.reset();
+      afficherChantiers();
+    });
 
     dossierForm.addEventListener('submit', e => {
       e.preventDefault();
@@ -138,39 +197,33 @@
       window.location.href = `${window.location.pathname}?dossier=${encodeURIComponent(nom)}`;
     });
 
-    chantierForm.addEventListener('submit', e => {
-      e.preventDefault();
-      if (!currentDossier) {
-        alert('Aucun dossier sélectionné.');
-        return;
-      }
-      const chantier = {
-        chantier: document.getElementById('chantier').value,
-        dateVisite: document.getElementById('dateVisite').value,
-        dureeEstimee: document.getElementById('dureeEstimee').value,
-        dateDebut: document.getElementById('dateDebut').value,
-        dateFin: document.getElementById('dateFin').value,
-        visite: document.getElementById('visite').checked,
-        transmise: document.getElementById('transmise').checked,
-        retour: document.getElementById('retour').checked,
-        chef: document.getElementById('chef').value,
-        commentaire: document.getElementById('commentaire').value
-      };
-      enregistrerChantier(chantier);
-      alert('Chantier enregistré avec succès !');
-    });
+    function genererPDF(nomDossier) {
+      const chantiers = JSON.parse(localStorage.getItem('chantiers_' + nomDossier) || '[]');
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(12);
+      let y = 10;
+      doc.text(`Dossier : ${nomDossier}`, 10, y);
+      y += 10;
+      chantiers.forEach((c, i) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+        doc.text(`#${i+1} - ${c.chantier}`, 10, y);
+        y += 7;
+        doc.text(`Visite: ${c.dateVisite || '-'}, Début: ${c.dateDebut || '-'}, Fin: ${c.dateFin || '-'}`, 10, y);
+        y += 7;
+        doc.text(`Durée: ${c.dureeEstimee || '-'} jours, Chef: ${c.chef || '-'}`, 10, y);
+        y += 7;
+        doc.text(`Commentaire: ${c.commentaire || '-'}`, 10, y);
+        y += 7;
+        doc.text(`Visite: ${c.visite ? 'Oui' : 'Non'}, Transmise: ${c.transmise ? 'Oui' : 'Non'}, Retour: ${c.retour ? 'Oui' : 'Non'}`, 10, y);
+        y += 10;
+      });
+      doc.save(`${nomDossier}.pdf`);
+    }
 
-    supprimerDossierBtn.addEventListener('click', () => {
-      if (!currentDossier) return;
-      if(confirm(`Supprimer définitivement le dossier "${currentDossier}" et son chantier ?`)){
-        dossiers = dossiers.filter(d => d !== currentDossier);
-        localStorage.removeItem('chantier_' + currentDossier);
-        enregistrerDossiers();
-        window.location.href = window.location.pathname;
-      }
-    });
-
-    // Initialisation au chargement
     const params = new URLSearchParams(window.location.search);
     const dossierURL = decodeURIComponent(params.get('dossier') || '');
     if (dossierURL) {
@@ -181,8 +234,8 @@
       }
       currentDossierTitle.textContent = `Dossier : ${currentDossier}`;
       chantierForm.style.display = 'block';
-      supprimerDossierBtn.style.display = 'inline-block';
-      afficherChantier();
+      chantierListDiv.style.display = 'block';
+      afficherChantiers();
     } else {
       afficherListeDossiers();
     }
