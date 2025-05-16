@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suivi de Chantiers</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     h1, h2 { text-align: center; }
@@ -198,20 +199,29 @@
 
     function genererPDF(nomDossier) {
       const chantiers = JSON.parse(localStorage.getItem('chantiers_' + nomDossier) || '[]');
-      let contenu = `Dossier : ${nomDossier}\n\n`;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(12);
+      let y = 10;
+      doc.text(`Dossier : ${nomDossier}`, 10, y);
+      y += 10;
       chantiers.forEach((c, i) => {
-        contenu += `#${i+1} - ${c.chantier}\n`;
-        contenu += `Visite : ${c.dateVisite || '-'}\nDébut : ${c.dateDebut || '-'}\nFin : ${c.dateFin || '-'}\nDurée : ${c.dureeEstimee || '-'} jours\n`;
-        contenu += `Chef : ${c.chef || '-'}\nCommentaire : ${c.commentaire || '-'}\n`;
-        contenu += `Visite réalisée: ${c.visite ? 'Oui' : 'Non'}, Transmise BE: ${c.transmise ? 'Oui' : 'Non'}, Retour client: ${c.retour ? 'Oui' : 'Non'}\n\n`;
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+        doc.text(`#${i+1} - ${c.chantier}`, 10, y);
+        y += 7;
+        doc.text(`Visite: ${c.dateVisite || '-'}, Début: ${c.dateDebut || '-'}, Fin: ${c.dateFin || '-'}`, 10, y);
+        y += 7;
+        doc.text(`Durée: ${c.dureeEstimee || '-'} jours, Chef: ${c.chef || '-'}`, 10, y);
+        y += 7;
+        doc.text(`Commentaire: ${c.commentaire || '-'}`, 10, y);
+        y += 7;
+        doc.text(`Visite: ${c.visite ? 'Oui' : 'Non'}, Transmise: ${c.transmise ? 'Oui' : 'Non'}, Retour: ${c.retour ? 'Oui' : 'Non'}`, 10, y);
+        y += 10;
       });
-      const blob = new Blob([contenu], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nomDossier + '.pdf';
-      a.click();
-      URL.revokeObjectURL(url);
+      doc.save(`${nomDossier}.pdf`);
     }
 
     const params = new URLSearchParams(window.location.search);
